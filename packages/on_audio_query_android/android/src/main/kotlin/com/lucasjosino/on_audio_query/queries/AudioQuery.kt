@@ -62,13 +62,27 @@ class AudioQuery : ViewModel() {
         Log.d(TAG, "\turi: $uri")
 
         // Query everything in background for a better performance.
+        // Capture the result reference before launching coroutine to avoid WeakReference issues
+        val safeResult = result
+        var isResultSent = false
+        
         viewModelScope.launch {
             try {
                 val queryResult = loadSongs()
-                result.success(queryResult)
+                synchronized(this@AudioQuery) {
+                    if (!isResultSent) {
+                        isResultSent = true
+                        safeResult.success(queryResult)
+                    }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error querying songs: ${e.message}")
-                result.error("QUERY_ERROR", "Error querying songs: ${e.message}", null)
+                synchronized(this@AudioQuery) {
+                    if (!isResultSent) {
+                        isResultSent = true
+                        safeResult.error("QUERY_ERROR", "Error querying songs: ${e.message}", null)
+                    }
+                }
             }
         }
     }

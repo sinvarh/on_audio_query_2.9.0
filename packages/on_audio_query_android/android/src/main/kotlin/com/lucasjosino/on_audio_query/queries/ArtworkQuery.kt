@@ -81,6 +81,10 @@ class ArtworkQuery : ViewModel() {
         Log.d(TAG, "\ttype: $type")
 
         // Query everything in background for a better performance.
+        // Capture the result reference before launching coroutine to avoid WeakReference issues
+        val safeResult = result
+        var isResultSent = false
+        
         viewModelScope.launch {
             try {
                 var resultArtList = loadArt()
@@ -91,10 +95,20 @@ class ArtworkQuery : ViewModel() {
                     resultArtList = null
                 }
 
-                result.success(resultArtList)
+                synchronized(this@ArtworkQuery) {
+                    if (!isResultSent) {
+                        isResultSent = true
+                        safeResult.success(resultArtList)
+                    }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error querying artwork: ${e.message}")
-                result.error("QUERY_ERROR", "Error querying artwork: ${e.message}", null)
+                synchronized(this@ArtworkQuery) {
+                    if (!isResultSent) {
+                        isResultSent = true
+                        safeResult.error("QUERY_ERROR", "Error querying artwork: ${e.message}", null)
+                    }
+                }
             }
         }
     }

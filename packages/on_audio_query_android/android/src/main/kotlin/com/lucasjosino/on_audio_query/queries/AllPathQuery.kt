@@ -28,12 +28,26 @@ class AllPathQuery {
         val context = PluginProvider.context()
         this.resolver = context.contentResolver
 
+        // Capture the result reference to avoid WeakReference issues
+        val safeResult = result
+        var isResultSent = false
+
         try {
             val resultAllPath = loadAllPath()
-            result.success(resultAllPath)
+            synchronized(this) {
+                if (!isResultSent) {
+                    isResultSent = true
+                    safeResult.success(resultAllPath)
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error querying all paths: ${e.message}")
-            result.error("QUERY_ERROR", "Error querying all paths: ${e.message}", null)
+            synchronized(this) {
+                if (!isResultSent) {
+                    isResultSent = true
+                    safeResult.error("QUERY_ERROR", "Error querying all paths: ${e.message}", null)
+                }
+            }
         }
     }
 

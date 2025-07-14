@@ -92,13 +92,27 @@ class AudioFromQuery : ViewModel() {
             where = checkAudiosFromType(type)
 
             // Query everything in background for a better performance.
+            // Capture the result reference before launching coroutine to avoid WeakReference issues
+            val safeResult = result
+            var isResultSent = false
+            
             viewModelScope.launch {
                 try {
                     val resultSongList = loadSongsFrom()
-                    result.success(resultSongList)
+                    synchronized(this@AudioFromQuery) {
+                        if (!isResultSent) {
+                            isResultSent = true
+                            safeResult.success(resultSongList)
+                        }
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error querying songs from: ${e.message}")
-                    result.error("QUERY_ERROR", "Error querying songs from: ${e.message}", null)
+                    synchronized(this@AudioFromQuery) {
+                        if (!isResultSent) {
+                            isResultSent = true
+                            safeResult.error("QUERY_ERROR", "Error querying songs from: ${e.message}", null)
+                        }
+                    }
                 }
             }
         }
@@ -158,13 +172,27 @@ class AudioFromQuery : ViewModel() {
         }
 
         // Query everything in background for a better performance.
+        // Capture the result reference before launching coroutine to avoid WeakReference issues
+        val safeResult = result
+        var isResultSent = false
+        
         viewModelScope.launch {
             try {
                 val resultSongsFrom = loadSongsFromPlaylistOrGenre()
-                result.success(resultSongsFrom)
+                synchronized(this@AudioFromQuery) {
+                    if (!isResultSent) {
+                        isResultSent = true
+                        safeResult.success(resultSongsFrom)
+                    }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error querying songs from playlist/genre: ${e.message}")
-                result.error("QUERY_ERROR", "Error querying songs from playlist/genre: ${e.message}", null)
+                synchronized(this@AudioFromQuery) {
+                    if (!isResultSent) {
+                        isResultSent = true
+                        safeResult.error("QUERY_ERROR", "Error querying songs from playlist/genre: ${e.message}", null)
+                    }
+                }
             }
         }
     }
