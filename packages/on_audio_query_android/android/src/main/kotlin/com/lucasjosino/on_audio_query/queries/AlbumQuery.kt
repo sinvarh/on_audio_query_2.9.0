@@ -9,9 +9,13 @@ import com.lucasjosino.on_audio_query.queries.helper.QueryHelper
 import com.lucasjosino.on_audio_query.types.checkAlbumsUriType
 import com.lucasjosino.on_audio_query.types.sorttypes.checkAlbumSortType
 import io.flutter.Log
+import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.isActive
+import java.util.concurrent.atomic.AtomicReference
 
 /** OnAlbumsQuery */
 class AlbumQuery : ViewModel() {
@@ -22,6 +26,8 @@ class AlbumQuery : ViewModel() {
 
     // Main parameters.
     private val helper = QueryHelper()
+    private var currentJob: Job? = null
+    private val currentResult = AtomicReference<MethodChannel.Result?>(null)
 
     private lateinit var uri: Uri
     private lateinit var sortType: String
@@ -35,6 +41,10 @@ class AlbumQuery : ViewModel() {
         val result = PluginProvider.result()
         val context = PluginProvider.context()
         this.resolver = context.contentResolver
+
+        // Cancel any existing job and set new result
+        currentJob?.cancel()
+        currentResult.set(result)
 
         // Sort: Type and Order.
         sortType = checkAlbumSortType(
@@ -53,28 +63,44 @@ class AlbumQuery : ViewModel() {
         Log.d(TAG, "\turi: $uri")
 
         // Query everything in background for a better performance.
-        // Capture the result reference before launching coroutine to avoid WeakReference issues
-        val safeResult = result
-        var isResultSent = false
-        
-        viewModelScope.launch {
+        currentJob = viewModelScope.launch {
             try {
-                val queryResult = loadAlbums()
-                synchronized(this@AlbumQuery) {
-                    if (!isResultSent) {
-                        isResultSent = true
-                        safeResult.success(queryResult)
-                    }
+                if (!isActive) {
+                    Log.d(TAG, "Coroutine was cancelled before starting query")
+                    return@launch
                 }
+
+                val queryResult = loadAlbums()
+                
+                if (!isActive) {
+                    Log.d(TAG, "Coroutine was cancelled before sending result")
+                    return@launch
+                }
+
+                sendResultSafely(queryResult, null)
             } catch (e: Exception) {
                 Log.e(TAG, "Error querying albums: ${e.message}")
-                synchronized(this@AlbumQuery) {
-                    if (!isResultSent) {
-                        isResultSent = true
-                        safeResult.error("QUERY_ERROR", "Error querying albums: ${e.message}", null)
-                    }
+                if (isActive) {
+                    sendResultSafely(null, e)
                 }
             }
+        }
+    }
+
+    private fun sendResultSafely(data: Any?, error: Exception?) {
+        try {
+            val result = currentResult.getAndSet(null)
+            if (result != null) {
+                if (error != null) {
+                    result.error("QUERY_ERROR", "Error querying albums: ${error.message}", null)
+                } else {
+                    result.success(data)
+                }
+            } else {
+                Log.w(TAG, "Result was null or already sent")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending result: ${e.message}")
         }
     }
 
