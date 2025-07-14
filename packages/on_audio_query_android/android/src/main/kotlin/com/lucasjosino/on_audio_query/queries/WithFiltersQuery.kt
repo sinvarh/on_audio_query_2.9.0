@@ -72,8 +72,13 @@ class WithFiltersQuery : ViewModel() {
 
         // Query everything in background for a better performance.
         viewModelScope.launch {
-            val queryResult = loadWithFilters()
-            result.success(queryResult)
+            try {
+                val queryResult = loadWithFilters()
+                result.success(queryResult)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error querying with filters: ${e.message}")
+                result.error("QUERY_ERROR", "Error querying with filters: ${e.message}", null)
+            }
         }
     }
 

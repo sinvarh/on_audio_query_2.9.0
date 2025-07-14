@@ -93,8 +93,13 @@ class AudioFromQuery : ViewModel() {
 
             // Query everything in background for a better performance.
             viewModelScope.launch {
-                val resultSongList = loadSongsFrom()
-                result.success(resultSongList)
+                try {
+                    val resultSongList = loadSongsFrom()
+                    result.success(resultSongList)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error querying songs from: ${e.message}")
+                    result.error("QUERY_ERROR", "Error querying songs from: ${e.message}", null)
+                }
             }
         }
     }
@@ -154,8 +159,13 @@ class AudioFromQuery : ViewModel() {
 
         // Query everything in background for a better performance.
         viewModelScope.launch {
-            val resultSongsFrom = loadSongsFromPlaylistOrGenre()
-            result.success(resultSongsFrom)
+            try {
+                val resultSongsFrom = loadSongsFromPlaylistOrGenre()
+                result.success(resultSongsFrom)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error querying songs from playlist/genre: ${e.message}")
+                result.error("QUERY_ERROR", "Error querying songs from playlist/genre: ${e.message}", null)
+            }
         }
     }
 

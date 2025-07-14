@@ -55,8 +55,13 @@ class GenreQuery : ViewModel() {
 
         // Query everything in background for a better performance.
         viewModelScope.launch {
-            val queryResult = loadGenres()
-            result.success(queryResult)
+            try {
+                val queryResult = loadGenres()
+                result.success(queryResult)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error querying genres: ${e.message}")
+                result.error("QUERY_ERROR", "Error querying genres: ${e.message}", null)
+            }
         }
     }
 

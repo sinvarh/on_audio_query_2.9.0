@@ -57,8 +57,13 @@ class ArtistQuery : ViewModel() {
 
         // Query everything in background for a better performance.
         viewModelScope.launch {
-            val queryResult = loadArtists()
-            result.success(queryResult)
+            try {
+                val queryResult = loadArtists()
+                result.success(queryResult)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error querying artists: ${e.message}")
+                result.error("QUERY_ERROR", "Error querying artists: ${e.message}", null)
+            }
         }
     }
 

@@ -63,8 +63,13 @@ class AudioQuery : ViewModel() {
 
         // Query everything in background for a better performance.
         viewModelScope.launch {
-            val queryResult = loadSongs()
-            result.success(queryResult)
+            try {
+                val queryResult = loadSongs()
+                result.success(queryResult)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error querying songs: ${e.message}")
+                result.error("QUERY_ERROR", "Error querying songs: ${e.message}", null)
+            }
         }
     }
 

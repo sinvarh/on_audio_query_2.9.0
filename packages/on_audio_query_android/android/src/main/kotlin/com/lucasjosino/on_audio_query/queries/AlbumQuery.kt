@@ -54,8 +54,13 @@ class AlbumQuery : ViewModel() {
 
         // Query everything in background for a better performance.
         viewModelScope.launch {
-            val queryResult = loadAlbums()
-            result.success(queryResult)
+            try {
+                val queryResult = loadAlbums()
+                result.success(queryResult)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error querying albums: ${e.message}")
+                result.error("QUERY_ERROR", "Error querying albums: ${e.message}", null)
+            }
         }
     }
 

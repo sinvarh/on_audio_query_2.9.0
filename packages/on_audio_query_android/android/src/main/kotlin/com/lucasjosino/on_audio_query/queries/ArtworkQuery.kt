@@ -82,15 +82,20 @@ class ArtworkQuery : ViewModel() {
 
         // Query everything in background for a better performance.
         viewModelScope.launch {
-            var resultArtList = loadArt()
+            try {
+                var resultArtList = loadArt()
 
-            // Sometimes android will extract a 'wrong' or 'empty' artwork. Just set as null.
-            if (resultArtList != null && resultArtList.isEmpty()) {
-                Log.i(TAG, "Artwork for '$id' is empty. Returning null")
-                resultArtList = null
+                // Sometimes android will extract a 'wrong' or 'empty' artwork. Just set as null.
+                if (resultArtList != null && resultArtList.isEmpty()) {
+                    Log.i(TAG, "Artwork for '$id' is empty. Returning null")
+                    resultArtList = null
+                }
+
+                result.success(resultArtList)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error querying artwork: ${e.message}")
+                result.error("QUERY_ERROR", "Error querying artwork: ${e.message}", null)
             }
-
-            result.success(resultArtList)
         }
     }
 
