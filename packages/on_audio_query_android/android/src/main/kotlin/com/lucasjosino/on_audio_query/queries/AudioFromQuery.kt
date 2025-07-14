@@ -32,7 +32,6 @@ class AudioFromQuery : ViewModel() {
     private val helper = QueryHelper()
     private var pId = 0
     private var pUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-    private var isReplySent = false
 
     // None of this methods can be null.
     private lateinit var where: String
@@ -48,7 +47,6 @@ class AudioFromQuery : ViewModel() {
         val result = PluginProvider.result()
         val context = PluginProvider.context()
         this.resolver = context.contentResolver
-        this.isReplySent = false
 
         // The type of 'item':
         //   * 0 -> Album
@@ -97,10 +95,10 @@ class AudioFromQuery : ViewModel() {
             viewModelScope.launch {
                 try {
                     val resultSongList = loadSongsFrom()
-                    sendResult(result, resultSongList, null)
+                    result.success(resultSongList)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error querying songs from: ${e.message}")
-                    sendResult(result, null, e)
+                    result.error("QUERY_ERROR", "Error querying songs from: ${e.message}", null)
                 }
             }
         }
@@ -163,10 +161,10 @@ class AudioFromQuery : ViewModel() {
         viewModelScope.launch {
             try {
                 val resultSongsFrom = loadSongsFromPlaylistOrGenre()
-                sendResult(result, resultSongsFrom, null)
+                result.success(resultSongsFrom)
             } catch (e: Exception) {
                 Log.e(TAG, "Error querying songs from playlist/genre: ${e.message}")
-                sendResult(result, null, e)
+                result.error("QUERY_ERROR", "Error querying songs from playlist/genre: ${e.message}", null)
             }
         }
     }
@@ -222,25 +220,5 @@ class AudioFromQuery : ViewModel() {
 
         cursor?.close()
         return false
-    }
-
-    private fun sendResult(result: MethodChannel.Result, data: Any?, error: Exception?) {
-        synchronized(this) {
-            if (isReplySent) {
-                Log.w(TAG, "Reply already sent, ignoring duplicate result")
-                return
-            }
-            isReplySent = true
-            
-            try {
-                if (error != null) {
-                    result.error("QUERY_ERROR", "Error querying songs from: ${error.message}", null)
-                } else {
-                    result.success(data)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error sending result: ${e.message}")
-            }
-        }
     }
 }

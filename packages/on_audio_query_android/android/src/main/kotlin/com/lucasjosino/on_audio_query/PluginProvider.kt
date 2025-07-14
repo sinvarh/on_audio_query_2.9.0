@@ -4,7 +4,53 @@ import android.app.Activity
 import android.content.Context
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.Log
 import java.lang.ref.WeakReference
+import java.util.concurrent.atomic.AtomicBoolean
+
+/**
+ * Safe wrapper for MethodChannel.Result to prevent duplicate calls
+ */
+class SafeResult(private val originalResult: MethodChannel.Result) : MethodChannel.Result {
+    private val isReplySent = AtomicBoolean(false)
+    private val tag = "SafeResult"
+
+    override fun success(result: Any?) {
+        if (isReplySent.compareAndSet(false, true)) {
+            try {
+                originalResult.success(result)
+            } catch (e: Exception) {
+                Log.e(tag, "Error sending success result: ${e.message}")
+            }
+        } else {
+            Log.w(tag, "Reply already sent, ignoring duplicate success call")
+        }
+    }
+
+    override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
+        if (isReplySent.compareAndSet(false, true)) {
+            try {
+                originalResult.error(errorCode, errorMessage, errorDetails)
+            } catch (e: Exception) {
+                Log.e(tag, "Error sending error result: ${e.message}")
+            }
+        } else {
+            Log.w(tag, "Reply already sent, ignoring duplicate error call")
+        }
+    }
+
+    override fun notImplemented() {
+        if (isReplySent.compareAndSet(false, true)) {
+            try {
+                originalResult.notImplemented()
+            } catch (e: Exception) {
+                Log.e(tag, "Error sending notImplemented result: ${e.message}")
+            }
+        } else {
+            Log.w(tag, "Reply already sent, ignoring duplicate notImplemented call")
+        }
+    }
+}
 
 /**
  * A singleton used to define all variables/methods that will be used on all plugin.
@@ -31,7 +77,7 @@ object PluginProvider {
 
     private lateinit var call: WeakReference<MethodCall>
 
-    private lateinit var result: WeakReference<MethodChannel.Result>
+    private lateinit var result: WeakReference<SafeResult>
 
     /**
      * Used to define the current [Activity] and [Context].
@@ -50,7 +96,7 @@ object PluginProvider {
      */
     fun setCurrentMethod(call: MethodCall, result: MethodChannel.Result) {
         this.call = WeakReference(call)
-        this.result = WeakReference(result)
+        this.result = WeakReference(SafeResult(result))
     }
 
     /**

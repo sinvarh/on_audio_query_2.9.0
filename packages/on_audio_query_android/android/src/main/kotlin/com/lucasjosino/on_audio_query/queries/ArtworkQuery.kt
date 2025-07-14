@@ -33,7 +33,6 @@ class ArtworkQuery : ViewModel() {
     private var quality: Int = 100
     private var size: Int = 200
     private var showDetailedLog: Boolean = false
-    private var isReplySent = false
 
     private lateinit var uri: Uri
     private lateinit var resolver: ContentResolver
@@ -48,7 +47,6 @@ class ArtworkQuery : ViewModel() {
         val context = PluginProvider.context()
         this.resolver = context.contentResolver
         this.showDetailedLog = PluginProvider.showDetailedLog
-        this.isReplySent = false
 
         id = call.argument<Number>("id")!!
 
@@ -93,30 +91,10 @@ class ArtworkQuery : ViewModel() {
                     resultArtList = null
                 }
 
-                sendResult(result, resultArtList, null)
+                result.success(resultArtList)
             } catch (e: Exception) {
                 Log.e(TAG, "Error querying artwork: ${e.message}")
-                sendResult(result, null, e)
-            }
-        }
-    }
-
-    private fun sendResult(result: MethodChannel.Result, data: Any?, error: Exception?) {
-        synchronized(this) {
-            if (isReplySent) {
-                Log.w(TAG, "Reply already sent, ignoring duplicate result")
-                return
-            }
-            isReplySent = true
-            
-            try {
-                if (error != null) {
-                    result.error("QUERY_ERROR", "Error querying artwork: ${error.message}", null)
-                } else {
-                    result.success(data)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error sending result: ${e.message}")
+                result.error("QUERY_ERROR", "Error querying artwork: ${e.message}", null)
             }
         }
     }

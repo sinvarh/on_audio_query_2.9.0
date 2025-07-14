@@ -19,7 +19,6 @@ class AllPathQuery {
     }
 
     private lateinit var resolver: ContentResolver
-    private var isReplySent = false
 
     /**
      * Method to "query" all paths.
@@ -28,34 +27,13 @@ class AllPathQuery {
         val result = PluginProvider.result()
         val context = PluginProvider.context()
         this.resolver = context.contentResolver
-        this.isReplySent = false
 
         try {
             val resultAllPath = loadAllPath()
-            sendResult(result, resultAllPath, null)
+            result.success(resultAllPath)
         } catch (e: Exception) {
             Log.e(TAG, "Error querying all paths: ${e.message}")
-            sendResult(result, null, e)
-        }
-    }
-
-    private fun sendResult(result: MethodChannel.Result, data: Any?, error: Exception?) {
-        synchronized(this) {
-            if (isReplySent) {
-                Log.w(TAG, "Reply already sent, ignoring duplicate result")
-                return
-            }
-            isReplySent = true
-            
-            try {
-                if (error != null) {
-                    result.error("QUERY_ERROR", "Error querying all paths: ${error.message}", null)
-                } else {
-                    result.success(data)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error sending result: ${e.message}")
-            }
+            result.error("QUERY_ERROR", "Error querying all paths: ${e.message}", null)
         }
     }
 

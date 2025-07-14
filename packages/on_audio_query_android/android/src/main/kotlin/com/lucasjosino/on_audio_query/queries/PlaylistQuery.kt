@@ -24,7 +24,6 @@ class PlaylistQuery : ViewModel() {
 
     //Main parameters
     private val helper = QueryHelper()
-    private var isReplySent = false
 
     private lateinit var uri: Uri
     private lateinit var resolver: ContentResolver
@@ -38,7 +37,6 @@ class PlaylistQuery : ViewModel() {
         val result = PluginProvider.result()
         val context = PluginProvider.context()
         this.resolver = context.contentResolver
-        this.isReplySent = false
 
         // Sort: Type and Order.
         sortType = checkGenreSortType(
@@ -59,30 +57,10 @@ class PlaylistQuery : ViewModel() {
         viewModelScope.launch {
             try {
                 val queryResult = loadPlaylists()
-                sendResult(result, queryResult, null)
+                result.success(queryResult)
             } catch (e: Exception) {
                 Log.e(TAG, "Error querying playlists: ${e.message}")
-                sendResult(result, null, e)
-            }
-        }
-    }
-
-    private fun sendResult(result: MethodChannel.Result, data: Any?, error: Exception?) {
-        synchronized(this) {
-            if (isReplySent) {
-                Log.w(TAG, "Reply already sent, ignoring duplicate result")
-                return
-            }
-            isReplySent = true
-            
-            try {
-                if (error != null) {
-                    result.error("QUERY_ERROR", "Error querying playlists: ${error.message}", null)
-                } else {
-                    result.success(data)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error sending result: ${e.message}")
+                result.error("QUERY_ERROR", "Error querying playlists: ${e.message}", null)
             }
         }
     }
