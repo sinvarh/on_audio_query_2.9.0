@@ -24,6 +24,7 @@ class ArtistQuery : ViewModel() {
 
     //Main parameters
     private val helper = QueryHelper()
+    private var isReplySent = false
 
     // None of this methods can be null.
     private lateinit var uri: Uri
@@ -38,6 +39,7 @@ class ArtistQuery : ViewModel() {
         val result = PluginProvider.result()
         val context = PluginProvider.context()
         this.resolver = context.contentResolver
+        this.isReplySent = false
 
         // Sort: Type and Order
         sortType = checkArtistSortType(
@@ -59,10 +61,30 @@ class ArtistQuery : ViewModel() {
         viewModelScope.launch {
             try {
                 val queryResult = loadArtists()
-                result.success(queryResult)
+                sendResult(result, queryResult, null)
             } catch (e: Exception) {
                 Log.e(TAG, "Error querying artists: ${e.message}")
-                result.error("QUERY_ERROR", "Error querying artists: ${e.message}", null)
+                sendResult(result, null, e)
+            }
+        }
+    }
+
+    private fun sendResult(result: MethodChannel.Result, data: Any?, error: Exception?) {
+        synchronized(this) {
+            if (isReplySent) {
+                Log.w(TAG, "Reply already sent, ignoring duplicate result")
+                return
+            }
+            isReplySent = true
+            
+            try {
+                if (error != null) {
+                    result.error("QUERY_ERROR", "Error querying artists: ${error.message}", null)
+                } else {
+                    result.success(data)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending result: ${e.message}")
             }
         }
     }
